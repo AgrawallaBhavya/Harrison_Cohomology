@@ -1,29 +1,20 @@
-
 from math import factorial, perm
-#code to check whether there are non zero cocycles for other partitions
 
 
 def get_permutations(elements):
 #creates a dictionary mapping permutations of the input to their sign
     perms_dict = {}
     if len(elements) == 1:
-        perms_dict[elements] = 0
+        perms_dict[elements] = 1
     else:
         for i in range(len(elements)):
             temp_list = list(elements)
             temp_list.pop(i)
             temp_dict = get_permutations(tuple(temp_list))
             for perms in temp_dict.keys():
-                perms_dict[(elements[i], ) + perms] = i*factorial(len(elements) - 1) + temp_dict[perms]
+                perms_dict[(elements[i], ) + perms] = ((-1)**i)*temp_dict[perms]
     return perms_dict
-def partition_map(permu, template):
-    my_dict = {}
-    for x in range(1, len(permu) + 1):
-        my_dict[x] = template[x-1]
-    ans = []
-    for x in permu:
-        ans.append(my_dict[x])
-    return tuple(ans)
+
 def create_shuffles(elements, i , j):
 #given a permutation, create a list of it's i+j shuffles
     shuffles = set()
@@ -59,65 +50,45 @@ def exchange(matrix, u, v, j):
     for k in range(j):
         matrix[u][k] = matrix[u][k] + matrix[v][k]
         matrix[v][k] = matrix[u][k] - matrix[v][k]
-        matrix[u][k] = matrix[u][k] - matrix[v][k]
-def reduce(matrix, row_1, col, row_2, j, combination_matrix):
-    a = matrix[row_1][col]
-    b = matrix[row_2][col]/a
+def reduce(matrix, row_1, col, row_2, j, p):
     #subtract a multiple of row_1 from row_2 to make the row_2 entry in col = 0
+    ratio = (matrix[row_2][col]*pow(matrix[row_1][col], -1, p))%p
     for k in range(j):
-        matrix[row_2][k] = matrix[row_2][k] - b*matrix[row_1][k]
-    for k in range(len(combination_matrix)):
-        combination_matrix[row_2][k] -= b*combination_matrix[row_1][k]
-def get_cocycle(n,partition, q):
+        matrix[row_2][k] = (matrix[row_2][k] - ratio*matrix[row_1][k])%p 
+def get_cocycle(n, p, partition, q):
     my_tuple = tuple()
     for i in range(1,n+1):
         my_tuple+=(i, )
     my_dictionary = get_permutations(my_tuple)
     my_iterator = list(my_dictionary.keys())
-    #create a iterator of permutations respecting the partition
-    my_template = []
-    current = 1
-    for stuff in partition:
-        for x in range(stuff):
-            my_template.append(current)
-        current += 1
-    my_template = tuple(my_template)
-    iterator_2 = list(set(partition_map(permu, my_template) for permu in my_iterator))
 #create the symmetry conditions matrix
     matrix = []
-    combination_matrix = []
     for i in range(q*int(n/2)):
         matrix.append([0 for j in range(q)])
-        combination_matrix.append([0 for j in range(q*int(n/2))])
-        combination_matrix[i][i] = 1
     for s in range(q):
-        mah_template = iterator_2[s]
+        my_perm = my_iterator[s]
         for m in range(1, int(n/2) + 1):
-            for permi in create_shuffles(my_tuple, m, n-m):
-                my_value = my_dictionary[permi]
-                matrix[s*int(n/2) + m-1][iterator_2.index(partition_map(permi, mah_template))] += my_value
+            for permi in create_shuffles(my_perm, m, n-m):
+                my_value = my_dictionary[my_perm]*my_dictionary[permi]
+                matrix[s*int(n/2) + m-1][my_iterator.index(permi)] = my_value
 #gauss reduce this matrix to get the dimension of the kernel
-    print(matrix)
     rank = 0
-    for i in range(q):
+    for i in range(factorial(n)):
         reduce_bool = False
-        for s in range(i, q*int(n/2)):
-            if matrix[s][i] == 0:
+        for s in range(i, factorial(n)*int(n/2)):
+            if matrix[s][i]%p == 0:
                 continue
             else:
                 reduce_bool = True
                 rank += 1
                 if not i == s:
-                  exchange(matrix, s, i, q)
-                  exchange(combination_matrix, s, i, q*int(n/2))
+                  exchange(matrix, s, i, factorial(n))
                 break
         if reduce_bool:
-            for j in range(q*int(n/2)):
+            for j in range(factorial(n)*int(n/2)):
                 if not matrix[j][i] == 0 and not j == i:
-                  reduce(matrix, i, i, j, q, combination_matrix)
-    print(matrix)
-    print(combination_matrix)
-    return q - rank
+                  reduce(matrix, i, i, j, factorial(n), p)
+    return factorial(n) - rank
 
 def get_cohomology(n,p):
     matrix = []
@@ -189,15 +160,11 @@ def get_cohomology(n,p):
                 if not matrix[j][i] == 0 and not j == i:
                   reduce(matrix, i, i, j, int((n*(n-1))/2)*factorial(n-1), p)
     return get_cocycle(n,p) - (get_cocycle(n-1, p)*int((n*(n-1))/2) - (int((n*(n-1))/2)*factorial(n-1) - rank))
-print(get_cocycle(4, (1,1,1,1), 24))
-# k = 2, n = 3 f is non zero only on [x, x', x](1 + 2) (and permutations), [x,x,x](3 + 0), [x',x',x'](0+ 3), [x', x', x](2 + 1)
-# f([xx', x, x^2]) = 0, etc
-# f(x,x',x) - f()
-#f[x,x,x,,x,x,x]
 
-#f(x_1, x_2,x_3,x_4) - f(2,1,3,4) + f(2,3,1,4) - f(2,3,4,1) = 0 1+3
-# f(2,4,1,3) - f(4,2,1,3) + f(4,1,2,3) - f(4,1,3,2)...
-# f(x_1, x)
+
+
+
+
     
 
 
